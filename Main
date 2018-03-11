@@ -6,22 +6,14 @@
 template<class KeyType, class ValueType, class Hash = std::hash<KeyType>>
 class HashMap {
 public:
-    using iterator = typename std::list <std::pair <const KeyType, ValueType> >::iterator;
-    using const_iterator = typename std::list <std::pair <const KeyType, ValueType> >::const_iterator;
-
-private:
-    std::list<std::pair<const KeyType, ValueType>> allElements;
-    std::vector<std::pair<iterator, size_t>> ind;
-    Hash hasher;
-    size_t q = 1;
-    size_t count = 0;
-public:
+    using iterator = typename std::list <std::pair <const KeyType, ValueType>>::iterator;
+    using const_iterator = typename std::list <std::pair <const KeyType, ValueType>>::const_iterator;
     HashMap(Hash h = Hash()) : hasher(h) {
         ind.resize(1, {allElements.end(), 0});
     }
     HashMap(HashMap<KeyType, ValueType>& now) {
         ind.resize(1, {allElements.end(), 0});
-        for(auto it = now.begin(); it != now.end(); ++it) {
+        for (auto it = now.begin(); it != now.end(); ++it) {
             insert(*it);
         }
     }
@@ -29,14 +21,14 @@ public:
     HashMap(IteratorType start, IteratorType finish, Hash h = Hash()) : hasher(h) {
         ind.resize(1, {allElements.end(),0});
         while (start != finish) {
-            insert({start->first, start->second});
+            insert(*start);
             ++start;
         }
     }
-    HashMap(std::initializer_list<std::pair<const KeyType, ValueType>> all , Hash h = Hash()) : hasher(h) {
-        ind.resize(1, {allElements.end(),0});
-        for (auto i : all) {
-            insert({i.first, i.second});
+    HashMap(std::initializer_list<std::pair<const KeyType, ValueType>> all, Hash h = Hash()) : hasher(h) {
+        ind.resize(1, {allElements.end(), 0});
+        for (const auto& i : all) {
+            insert(i);
         }
     }
     size_t size() const {
@@ -48,7 +40,7 @@ public:
     Hash hash_function() const {
         return hasher;
     }
-    void insert(std::pair<const KeyType, ValueType> now) {
+    void insert(const std::pair<const KeyType, ValueType>& now) {
         if (count >=  q / 2) {
             rebuild();
         }
@@ -56,7 +48,7 @@ public:
         index %= q;
         bool found = false;
         auto it = ind[index].first;
-        for(unsigned long i = 0; i < ind[index].second; ++i) {
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
             if (it->first == now.first) {
                 found = true;
                 break;
@@ -64,15 +56,15 @@ public:
             ++it;
         }
         if (!found) {
-            count++;
+            ++count;
             if (ind[index].first == allElements.end()) {
-                allElements.push_back({now.first, now.second});
+                allElements.push_back(now);
                 ind[index].first = --allElements.end();
                 ++ind[index].second;
             } else {
                 auto it = ind[index].first;
-                it++;
-                allElements.insert(it, {now.first, now.second});
+                ++it;
+                allElements.insert(it, now);
                 ++ind[index].second;
             }
         }
@@ -86,7 +78,7 @@ public:
             size_t index = hasher(it->first);
             index %= q;
             if (ind[index].first == allElements.end()) {
-                allElements.insert(it, {it->first, it->second});
+                allElements.insert(it, *it);
                 --it;
                 ind[index].first = it;
                 ++it;
@@ -94,19 +86,19 @@ public:
             } else {
                 auto tmp = ind[index].first;
                 tmp++;
-                allElements.insert(tmp, {it->first, it->second});
+                allElements.insert(tmp, *it);
                 ++ind[index].second;
             }
             auto del = it;
-            it++;
+            ++it;
             allElements.erase(del);
         }
     }
-    void erase(const KeyType key) {
+    void erase(const KeyType& key) {
         size_t index = hasher(key);
         index %= q;
         auto it = ind[index].first;
-        for(unsigned long i = 0; i < ind[index].second; ++i) {
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
             if (it->first == key) {
                 count--;
                 if (i == 0) {
@@ -128,11 +120,11 @@ public:
             ++it;
         }
     }
-    const ValueType& at(const KeyType key) const{
+    const ValueType& at(const KeyType& key) const{
         size_t index = hasher(key);
         index %= q;
         auto it = ind[index].first;
-        for(unsigned long i = 0; i < ind[index].second; ++i) {
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
             if (it->first == key) {
                 return it->second;
             }
@@ -157,11 +149,11 @@ public:
         ind.clear();
         ind.resize(q, {allElements.end(), 0});
     }
-    const_iterator find(const KeyType key) const {
+    const_iterator find(const KeyType& key) const {
         size_t index = hasher(key);
         index %= q;
         auto it = ind[index].first;
-        for(unsigned long i = 0; i < ind[index].second; ++i) {
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
             if (it->first == key) {
                 return it;
             }
@@ -169,11 +161,11 @@ public:
         }
         return allElements.end();
     }
-    iterator find(const KeyType key) {
+    iterator find(const KeyType& key) {
         size_t index = hasher(key);
         index %= q;
         auto it = ind[index].first;
-        for(unsigned long i = 0; i < ind[index].second; ++i) {
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
             if (it->first == key) {
                 return it;
             }
@@ -181,12 +173,12 @@ public:
         }
         return allElements.end();
     }
-    ValueType& operator[](const KeyType key) {
+    ValueType& operator[](const KeyType& key) {
         insert({key, ValueType()});
         size_t index = hasher(key);
         index %= q;
         auto it = ind[index].first;
-        for(unsigned long i = 0; i < ind[index].second; ++i) {
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
             if (it->first == key) {
                 return it->second;
             }
@@ -197,8 +189,8 @@ public:
     HashMap& operator = (HashMap now)
     {
         clear();
-        for(auto it = now.begin(); it != now.end(); ++it) {
-            insert(*it);
+        for (const auto& el : now) {
+            insert(el);
         }
         return *this;
     }
@@ -214,4 +206,10 @@ public:
     const_iterator end() const {
         return allElements.end();
     }
+private:
+    std::list<std::pair<const KeyType, ValueType>> allElements;
+    std::vector<std::pair<iterator, size_t>> ind;
+    Hash hasher;
+    size_t q = 1;
+    size_t count = 0;
 };
