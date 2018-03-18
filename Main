@@ -1,0 +1,210 @@
+#include <cstddef>
+#include <stdexcept>
+#include <list>
+#include <vector>
+
+template<class KeyType, class ValueType, class Hash = std::hash<KeyType>>
+class HashMap {
+public:
+    using iterator = typename std::list <std::pair <const KeyType, ValueType>>::iterator;
+    using const_iterator = typename std::list <std::pair <const KeyType, ValueType>>::const_iterator;
+    HashMap(Hash h = Hash()) : hasher(h) {
+        ind.resize(1, {allElements.end(), 0});
+    }
+    HashMap(HashMap<KeyType, ValueType>& now) {
+        ind.resize(1, {allElements.end(), 0});
+        for (auto it = now.begin(); it != now.end(); ++it) {
+            insert(*it);
+        }
+    }
+    template <class IteratorType>
+    HashMap(IteratorType start, IteratorType finish, Hash h = Hash()) : hasher(h) {
+        ind.resize(1, {allElements.end(),0});
+        while (start != finish) {
+            insert(*start);
+            ++start;
+        }
+    }
+    HashMap(std::initializer_list<std::pair<const KeyType, ValueType>> all, Hash h = Hash()) : HashMap(all.begin(), all.end(), h) {}
+    size_t size() const {
+        return count;
+    }
+    bool empty() const {
+        return count == 0;
+    }
+    Hash hash_function() const {
+        return hasher;
+    }
+    void insert(const std::pair<const KeyType, ValueType>& now) {
+        if (count >=  q / 2) {
+            rebuild();
+        }
+        size_t index = hasher(now.first);
+        index %= q;
+        bool found = false;
+        auto it = ind[index].first;
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
+            if (it->first == now.first) {
+                found = true;
+                break;
+            }
+            ++it;
+        }
+        if (!found) {
+            ++count;
+            if (ind[index].first == allElements.end()) {
+                allElements.push_back(now);
+                ind[index].first = --allElements.end();
+                ++ind[index].second;
+            } else {
+                auto it = ind[index].first;
+                ++it;
+                allElements.insert(it, now);
+                ++ind[index].second;
+            }
+        }
+    }
+    void rebuild() {
+        q *= 2;
+        ind.clear();
+        ind.resize(q, {allElements.end(), 0});
+        auto it = allElements.begin();
+        while (it != allElements.end()) {
+            size_t index = hasher(it->first);
+            index %= q;
+            if (ind[index].first == allElements.end()) {
+                allElements.insert(it, *it);
+                --it;
+                ind[index].first = it;
+                ++it;
+                ++ind[index].second;
+            } else {
+                auto tmp = ind[index].first;
+                tmp++;
+                allElements.insert(tmp, *it);
+                ++ind[index].second;
+            }
+            auto del = it;
+            ++it;
+            allElements.erase(del);
+        }
+    }
+    void erase(const KeyType& key) {
+        size_t index = hasher(key);
+        index %= q;
+        auto it = ind[index].first;
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
+            if (it->first == key) {
+                count--;
+                if (i == 0) {
+                    if (ind[index].second > 1) {
+                        ++ind[index].first;
+                        --ind[index].second;
+                        allElements.erase(it);
+                    } else {
+                        allElements.erase(it);
+                        ind[index].first = allElements.end();
+                        --ind[index].second;
+                    }
+                } else {
+                    --ind[index].second;
+                    allElements.erase(it);
+                }
+                break;
+            }
+            ++it;
+        }
+    }
+    const ValueType& at(const KeyType& key) const{
+        size_t index = hasher(key);
+        index %= q;
+        auto it = ind[index].first;
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
+            if (it->first == key) {
+                return it->second;
+            }
+            ++it;
+        }
+        throw std::out_of_range("wrong range");
+    }
+    void clear() {
+        if (empty()) {
+            return;
+        }
+        auto itForDel = allElements.begin();
+        auto itNow = ++allElements.begin();
+        allElements.erase(itForDel);
+        while (itNow != allElements.end()) {
+            itForDel = itNow;
+            ++itNow;
+            allElements.erase(itForDel);
+        }
+        q = 1;
+        count = 0;
+        ind.clear();
+        ind.resize(q, {allElements.end(), 0});
+    }
+    const_iterator find(const KeyType& key) const {
+        size_t index = hasher(key);
+        index %= q;
+        auto it = ind[index].first;
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
+            if (it->first == key) {
+                return it;
+            }
+            ++it;
+        }
+        return allElements.end();
+    }
+    iterator find(const KeyType& key) {
+        size_t index = hasher(key);
+        index %= q;
+        auto it = ind[index].first;
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
+            if (it->first == key) {
+                return it;
+            }
+            ++it;
+        }
+        return allElements.end();
+    }
+    ValueType& operator[](const KeyType& key) {
+        insert({key, ValueType()});
+        size_t index = hasher(key);
+        index %= q;
+        auto it = ind[index].first;
+        for (unsigned long i = 0; i < ind[index].second; ++i) {
+            if (it->first == key) {
+                return it->second;
+            }
+            ++it;
+        }
+        return it->second;
+    }
+    HashMap& operator = (HashMap now)
+    {
+        clear();
+        for (const auto& el : now) {
+            insert(el);
+        }
+        return *this;
+    }
+    iterator begin() {
+        return allElements.begin();
+    }
+    iterator end() {
+        return allElements.end();
+    }
+    const_iterator begin() const {
+        return allElements.begin();
+    }
+    const_iterator end() const {
+        return allElements.end();
+    }
+private:
+    std::list<std::pair<const KeyType, ValueType>> allElements;
+    std::vector<std::pair<iterator, size_t>> ind;
+    Hash hasher;
+    size_t q = 1;
+    size_t count = 0;
+};
