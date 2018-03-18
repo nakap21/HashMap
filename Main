@@ -25,12 +25,7 @@ public:
             ++start;
         }
     }
-    HashMap(std::initializer_list<std::pair<const KeyType, ValueType>> all, Hash h = Hash()) : hasher(h) {
-        ind.resize(1, {allElements.end(), 0});
-        for (const auto& i : all) {
-            insert(i);
-        }
-    }
+    HashMap(std::initializer_list<std::pair<const KeyType, ValueType>> all, Hash h = Hash()) : HashMap(all.begin(), all.end(), h) {}
     size_t size() const {
         return count;
     }
